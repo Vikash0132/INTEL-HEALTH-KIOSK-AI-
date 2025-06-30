@@ -1,0 +1,135 @@
+# Intel AI Healthcare Kiosk - Git Ignore File
+
+# Environment Variables (IMPORTANT: Never commit API keys!)
+.env
+.env.local
+.env.production
+.env.staging
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VSCode
+.vscode/settings.json
+.vscode/launch.json
+
+# Streamlit
+.streamlit/
+
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+*.tmp
+*.temp
+~$*
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Patient Data (HIPAA Compliance)
+patient_data/
+medical_records/
+exported_data/
+*.csv
+*.json
+!data/sample_data.json
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# API Keys and Secrets
+secrets/
+keys/
+credentials/
+
+# Model files (if storing large ML models)
+models/
+*.pkl
+*.joblib
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Streamlit cache
+.streamlit/
+
+# Medical Images (if any)
+*.dcm
+*.dicom
+
+# Backup files
+*.bak
+*.backup
+
+# Documentation builds
+docs/_build/
+
+# Node modules (if using any JS)
+node_modules/
+
+# Ignore large datasets
+datasets/
+large_files/
