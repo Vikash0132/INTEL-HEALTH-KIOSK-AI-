@@ -1,7 +1,13 @@
 from typing import Dict, Any, Optional
 import logging
-from googletrans import Translator
 import json
+
+try:
+    from googletrans import Translator
+    TRANSLATOR_AVAILABLE = True
+except ImportError:
+    TRANSLATOR_AVAILABLE = False
+    print("Warning: googletrans not available. Translation features will be limited.")
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +18,11 @@ class MultilingualSupport:
     
     def __init__(self):
         """Initialize multilingual support"""
-        self.translator = Translator()
+        if TRANSLATOR_AVAILABLE:
+            self.translator = Translator()
+        else:
+            self.translator = None
+        
         self.supported_languages = {
             'en': 'English',
             'hi': 'Hindi', 
@@ -164,6 +174,10 @@ class MultilingualSupport:
             Translated text
         """
         try:
+            if not TRANSLATOR_AVAILABLE or self.translator is None:
+                logger.warning("Google Translate not available, returning original text")
+                return text
+                
             if target_language not in self.supported_languages:
                 logger.warning(f"Unsupported language: {target_language}, falling back to English")
                 target_language = 'en'
@@ -190,6 +204,15 @@ class MultilingualSupport:
             Detected language code
         """
         try:
+            if not TRANSLATOR_AVAILABLE or self.translator is None:
+                # Fallback: simple heuristic detection
+                if any(char in text for char in 'हृदयरक्तचाप'):
+                    return 'hi'
+                elif any(char in text for char in 'ಹೃದಯರಕ್ತದೊತ್ತಡ'):
+                    return 'kn'
+                else:
+                    return 'en'
+            
             detection = self.translator.detect(text)
             detected_lang = detection.lang
             
