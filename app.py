@@ -6,6 +6,70 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 from typing import Dict, Any, Optional
+import os
+import csv
+
+USER_CSV = "data/users.csv"
+
+def ensure_user_csv():
+    os.makedirs("data", exist_ok=True)
+    if not os.path.exists(USER_CSV):
+        with open(USER_CSV, "w", newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["id", "name", "phone"])
+
+def get_users():
+    ensure_user_csv()
+    users = {}
+    with open(USER_CSV, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            users[row["id"]] = {"name": row["name"], "phone": row["phone"]}
+    return users
+
+def add_user(user_id, name, phone):
+    ensure_user_csv()
+    with open(USER_CSV, "a", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([user_id, name, phone])
+
+def login_signup():
+    st.title("Login / Signup")
+    user_id = st.text_input("Aayushman Bharat ID / Reference Number")
+    name = st.text_input("Name")
+    phone = st.text_input("Phone Number")
+    action = st.radio("Action", ["Login", "Sign Up"])
+    users = get_users()
+
+    if st.button("Continue"):
+        if action == "Login":
+            if user_id in users:
+                st.session_state["user_id"] = user_id
+                st.session_state["user_name"] = users[user_id]["name"]
+                st.session_state["user_phone"] = users[user_id]["phone"]
+                st.success(f"Welcome back, {users[user_id]['name']}!")
+                st.rerun()
+            else:
+                st.error("User not found. Please sign up first.")
+        else:
+            if user_id in users:
+                st.warning("User already exists. Please log in.")
+            elif not user_id or not name or not phone:
+                st.error("Please fill all fields.")
+            else:
+                add_user(user_id, name, phone)
+                st.session_state["user_id"] = user_id
+                st.session_state["user_name"] = name
+                st.session_state["user_phone"] = phone
+                st.success("Signup successful! Welcome.")
+                st.rerun()
+
+if "user_id" not in st.session_state:
+    login_signup()
+    st.stop()
+else:
+    st.write(f"Logged in as: {st.session_state['user_id']}")
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -137,6 +201,17 @@ def vitals_input_form():
             
             st.success(f"✅ Collected {len(vital_signs)} vitals successfully!")
             st.rerun()
+
+            user_id = st.session_state["user_id"]
+            today = datetime.now().strftime("%Y-%m-%d")
+            vitals_file = f"data/vitals_{user_id}_{today}.csv"
+            file_exists = os.path.exists(vitals_file)
+            with open(vitals_file, "a", newline='') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(["datetime"] + list(collected_vitals.keys()))
+                writer.writerow([datetime.now().isoformat()] + list(collected_vitals.values()))
+
         else:
             st.warning("Please enter at least one vital sign measurement.")
 
@@ -316,6 +391,7 @@ def main():
     # Language selection
     language_selector()
     
+    st.write("DEBUG: GOOGLE_API_KEY from secrets", st.secrets.get("GOOGLE_API_KEY", "NOT FOUND"))
     # Initialize AI agent
     if not initialize_ai_agent():
         st.stop()
