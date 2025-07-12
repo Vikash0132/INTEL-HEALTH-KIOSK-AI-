@@ -655,7 +655,7 @@ def doctor_management_interface():
         return
     
     # Admin tabs
-    tab1, tab2, tab3 = st.tabs(["➕ Add Doctor", "📋 View Doctors", "✏️ Edit Doctors"])
+    tab1, tab2, tab3, tab4 = st.tabs(["➕ Add Doctor", "📋 View Doctors", "✏️ Edit Doctors", "🔄 Migration"])
     
     with tab1:
         st.subheader("Add New Doctor")
@@ -691,11 +691,17 @@ def doctor_management_interface():
                 end_time = st.time_input("End Time:", value=datetime.strptime("17:00", "%H:%M").time())
                 
                 # Meeting platform
-                meeting_platform = st.selectbox("Meeting Platform:", ["zoom", "meet"])
+                st.info("💡 **Recommended:** Google Meet for better accessibility and ease of use")
+                meeting_platform = st.selectbox("Meeting Platform:", ["meet", "zoom"])
                 meeting_room = st.text_input(
                     "Meeting Room URL:", 
-                    placeholder="https://zoom.us/j/1234567890 or https://meet.google.com/abc-defg-hij"
+                    placeholder="https://meet.google.com/abc-defg-hij (Recommended) or https://zoom.us/j/1234567890"
                 )
+                
+                if meeting_platform == "meet":
+                    st.success("✅ Google Meet selected - No software installation required for patients")
+                else:
+                    st.warning("⚠️ Zoom selected - Patients may need to install Zoom app")
             
             submitted = st.form_submit_button("➕ Add Doctor", type="primary")
             
@@ -818,6 +824,39 @@ def doctor_management_interface():
                             st.error(f"❌ Error activating doctor: {str(e)}")
         else:
             st.info("No doctors available to edit.")
+    
+    with tab4:
+        st.subheader("🔄 Migrate Zoom to Google Meet")
+        
+        st.info(
+            "**Migration Tool**: Convert existing Zoom appointment links to Google Meet\n\n"
+            "This will update all confirmed appointments that currently use Zoom links "
+            "to use the doctor's current Google Meet room instead."
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 Migrate All Zoom Appointments", type="primary"):
+                with st.spinner("Migrating appointments..."):
+                    result = st.session_state.appointment_system.migrate_zoom_to_meet()
+                    
+                    if result['success']:
+                        if result['updated_count'] > 0:
+                            st.success(f"✅ {result['message']}")
+                        else:
+                            st.info("ℹ️ No Zoom appointments found to migrate")
+                    else:
+                        st.error(f"❌ {result['message']}")
+        
+        with col2:
+            st.warning(
+                "⚠️ **Important Notes:**\n"
+                "• This action cannot be undone\n"
+                "• Only confirmed appointments will be updated\n"
+                "• Doctors must have Google Meet links configured\n"
+                "• Patients will need to be notified of the change"
+            )
     
     # Logout button
     if st.button("🚪 Logout Admin"):

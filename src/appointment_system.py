@@ -49,13 +49,13 @@ class AppointmentSystem:
                     "available_times", "meeting_platform", "meeting_room", "status"
                 ])
                 
-                # Add sample doctors
+                # Add sample doctors (all using Google Meet)
                 sample_doctors = [
-                    ["DR001", "Dr. Rajesh Kumar", "General Physician", "Mon,Tue,Wed,Thu,Fri", "09:00-17:00", "zoom", "https://zoom.us/j/1234567890", "active"],
-                    ["DR002", "Dr. Priya Sharma", "Cardiologist", "Mon,Wed,Fri", "10:00-16:00", "meet", "https://meet.google.com/abc-defg-hij", "active"],
-                    ["DR003", "Dr. Suresh Patel", "Dermatologist", "Tue,Thu,Sat", "11:00-18:00", "zoom", "https://zoom.us/j/0987654321", "active"],
-                    ["DR004", "Dr. Anita Singh", "Pediatrician", "Mon,Tue,Thu,Fri", "08:00-16:00", "meet", "https://meet.google.com/xyz-uvwx-rst", "active"],
-                    ["DR005", "Dr. Vikram Reddy", "Neurologist", "Wed,Fri,Sat", "12:00-19:00", "zoom", "https://zoom.us/j/1122334455", "active"]
+                    ["DR001", "Dr. Rajesh Kumar", "General Physician", "Mon,Tue,Wed,Thu,Fri", "09:00-17:00", "meet", "https://meet.google.com/raj-kumar-clinic", "active"],
+                    ["DR002", "Dr. Priya Sharma", "Cardiologist", "Mon,Wed,Fri", "10:00-16:00", "meet", "https://meet.google.com/priya-cardio-care", "active"],
+                    ["DR003", "Dr. Suresh Patel", "Dermatologist", "Tue,Thu,Sat", "11:00-18:00", "meet", "https://meet.google.com/suresh-derma-care", "active"],
+                    ["DR004", "Dr. Anita Singh", "Pediatrician", "Mon,Tue,Thu,Fri", "08:00-16:00", "meet", "https://meet.google.com/anita-pediatric-clinic", "active"],
+                    ["DR005", "Dr. Vikram Reddy", "Neurologist", "Wed,Fri,Sat", "12:00-19:00", "meet", "https://meet.google.com/vikram-neuro-clinic", "active"]
                 ]
                 
                 for doctor in sample_doctors:
@@ -159,10 +159,16 @@ class AppointmentSystem:
             
             appointment_id = str(uuid.uuid4())[:8].upper()
             
-            # Create meeting link based on platform
+            # Create meeting link (optimized for Google Meet)
             meeting_link = doctor['meeting_room']
-            if doctor['meeting_platform'] == 'zoom':
-                meeting_link = f"{doctor['meeting_room']}?pwd=healthcare123"
+            
+            # Add additional parameters for Google Meet if needed
+            if doctor['meeting_platform'] == 'meet':
+                # Google Meet links work as-is, but we can add parameters if needed
+                meeting_link = doctor['meeting_room']
+            else:
+                # Fallback for other platforms
+                meeting_link = doctor['meeting_room']
             
             # Save appointment
             with open(self.appointments_file, 'a', newline='') as f:
@@ -229,3 +235,46 @@ class AppointmentSystem:
         except Exception as e:
             logger.error(f"Error cancelling appointment: {e}")
         return False
+
+    def migrate_zoom_to_meet(self) -> Dict[str, Any]:
+        """Migrate existing Zoom appointments to Google Meet"""
+        try:
+            # Read all appointments
+            appointments = []
+            updated_count = 0
+            
+            if not os.path.exists(self.appointments_file):
+                return {"success": True, "message": "No appointments to migrate", "updated_count": 0}
+            
+            with open(self.appointments_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                appointments = list(reader)
+            
+            # Update appointments with Zoom links
+            for appointment in appointments:
+                if 'zoom.us' in appointment.get('meeting_link', ''):
+                    # Get the doctor to use their current meeting room
+                    doctor = self.get_doctor_by_id(appointment['doctor_id'])
+                    if doctor and doctor['meeting_platform'] == 'meet':
+                        appointment['meeting_link'] = doctor['meeting_room']
+                        updated_count += 1
+            
+            # Write back updated appointments
+            if updated_count > 0:
+                with open(self.appointments_file, 'w', newline='') as f:
+                    if appointments:
+                        writer = csv.DictWriter(f, fieldnames=appointments[0].keys())
+                        writer.writeheader()
+                        writer.writerows(appointments)
+            
+            return {
+                "success": True, 
+                "message": f"Successfully migrated {updated_count} appointments from Zoom to Google Meet",
+                "updated_count": updated_count
+            }
+            
+        except Exception as e:
+            logger.error(f"Error migrating appointments: {e}")
+            return {"success": False, "message": f"Error during migration: {str(e)}", "updated_count": 0}
+
+def main():
