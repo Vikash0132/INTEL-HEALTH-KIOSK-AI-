@@ -276,5 +276,3 @@ class AppointmentSystem:
         except Exception as e:
             logger.error(f"Error migrating appointments: {e}")
             return {"success": False, "message": f"Error during migration: {str(e)}", "updated_count": 0}
-
-def main():
