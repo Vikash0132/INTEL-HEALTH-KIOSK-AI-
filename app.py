@@ -593,25 +593,46 @@ def my_appointments_interface():
                     "%Y-%m-%d %H:%M"
                 )
                 now = datetime.now()
-                
-                # Show join button if appointment is within 30 minutes
                 time_until_appointment = appointment_datetime - now
-                if -timedelta(minutes=30) <= time_until_appointment <= timedelta(hours=1):
-                    if st.button(f"🚀 Join Meeting", key=f"join_{appointment['appointment_id']}"):
-                        st.markdown(f"**Click the link below to join your appointment:**")
-                        st.markdown(f"[🔗 Join Meeting]({appointment['meeting_link']})")
                 
-                # Cancel button (only for future appointments)
-                if appointment_datetime > now:
-                    if st.button(f"❌ Cancel Appointment", key=f"cancel_{appointment['appointment_id']}"):
-                        if st.session_state.appointment_system.cancel_appointment(
-                            appointment['appointment_id'], 
-                            st.session_state.user_id
-                        ):
-                            st.success("Appointment cancelled successfully!")
-                            st.rerun()
-                        else:
-                            st.error("Failed to cancel appointment. Please try again.")
+                # Always show join button for confirmed appointments
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Determine button style and message based on timing
+                    if -timedelta(minutes=30) <= time_until_appointment <= timedelta(minutes=5):
+                        # Appointment is happening now or very soon
+                        if st.button(f"🚀 Join Meeting Now", key=f"join_{appointment['appointment_id']}", type="primary"):
+                            st.markdown(f"**🔴 LIVE: Your appointment is ready!**")
+                            st.markdown(f"[🔗 Click here to Join Meeting]({appointment['meeting_link']})")
+                    elif timedelta(minutes=5) < time_until_appointment <= timedelta(hours=1):
+                        # Appointment is within the hour
+                        if st.button(f"🚀 Join Meeting (Soon)", key=f"join_{appointment['appointment_id']}", type="secondary"):
+                            st.markdown(f"**⏰ Your appointment starts in {int(time_until_appointment.total_seconds() // 60)} minutes**")
+                            st.markdown(f"[🔗 Click here to Join Meeting]({appointment['meeting_link']})")
+                    elif time_until_appointment > timedelta(hours=1):
+                        # Future appointment
+                        if st.button(f"📋 View Meeting Link", key=f"join_{appointment['appointment_id']}"):
+                            st.markdown(f"**📅 Appointment scheduled for: {appointment_datetime.strftime('%B %d, %Y at %I:%M %p')}**")
+                            st.markdown(f"[🔗 Meeting Link (Available anytime)]({appointment['meeting_link']})")
+                            st.info("💡 You can join the meeting up to 15 minutes before your scheduled time.")
+                    else:
+                        # Past appointment
+                        if st.button(f"📹 Meeting Link", key=f"join_{appointment['appointment_id']}", disabled=True):
+                            st.markdown(f"**⏰ This appointment has ended**")
+                
+                with col2:
+                    # Cancel button (only for future appointments)
+                    if appointment_datetime > now:
+                        if st.button(f"❌ Cancel Appointment", key=f"cancel_{appointment['appointment_id']}", type="secondary"):
+                            if st.session_state.appointment_system.cancel_appointment(
+                                appointment['appointment_id'], 
+                                st.session_state.user_id
+                            ):
+                                st.success("Appointment cancelled successfully!")
+                                st.rerun()
+                            else:
+                                st.error("Failed to cancel appointment. Please try again.")
 
 def doctor_management_interface():
     """Admin interface for managing doctors"""
