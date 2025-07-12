@@ -14,6 +14,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Centralized Google Meet link for all appointments
+HEALTHCARE_KIOSK_MEETING_LINK = "https://meet.google.com/bzg-ruyn-esa"
+
 class AppointmentSystem:
     """
     Manages appointment booking and video call integration
@@ -159,16 +162,8 @@ class AppointmentSystem:
             
             appointment_id = str(uuid.uuid4())[:8].upper()
             
-            # Create meeting link (optimized for Google Meet)
-            meeting_link = doctor['meeting_room']
-            
-            # Add additional parameters for Google Meet if needed
-            if doctor['meeting_platform'] == 'meet':
-                # Google Meet links work as-is, but we can add parameters if needed
-                meeting_link = doctor['meeting_room']
-            else:
-                # Fallback for other platforms
-                meeting_link = doctor['meeting_room']
+            # Use centralized healthcare kiosk meeting link
+            meeting_link = HEALTHCARE_KIOSK_MEETING_LINK
             
             # Save appointment
             with open(self.appointments_file, 'a', newline='') as f:
@@ -252,12 +247,10 @@ class AppointmentSystem:
             
             # Update appointments with Zoom links
             for appointment in appointments:
-                if 'zoom.us' in appointment.get('meeting_link', ''):
-                    # Get the doctor to use their current meeting room
-                    doctor = self.get_doctor_by_id(appointment['doctor_id'])
-                    if doctor and doctor['meeting_platform'] == 'meet':
-                        appointment['meeting_link'] = doctor['meeting_room']
-                        updated_count += 1
+                if 'zoom.us' in appointment.get('meeting_link', '') or 'meet.google.com' in appointment.get('meeting_link', ''):
+                    # Use centralized healthcare kiosk meeting link for all appointments
+                    appointment['meeting_link'] = HEALTHCARE_KIOSK_MEETING_LINK
+                    updated_count += 1
             
             # Write back updated appointments
             if updated_count > 0:
