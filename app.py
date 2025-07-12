@@ -11,12 +11,18 @@ import csv
 
 USER_CSV = "data/users.csv"
 
+def add_user(user_id, name, phone, patient_history=""):
+    ensure_user_csv()
+    with open(USER_CSV, "a", newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([user_id, name, phone, patient_history])
+
 def ensure_user_csv():
     os.makedirs("data", exist_ok=True)
     if not os.path.exists(USER_CSV):
         with open(USER_CSV, "w", newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(["id", "name", "phone"])
+            writer.writerow(["id", "name", "phone", "patient_history"])  # Added column
 
 def get_users():
     ensure_user_csv()
@@ -24,14 +30,12 @@ def get_users():
     with open(USER_CSV, newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            users[row["id"]] = {"name": row["name"], "phone": row["phone"]}
+            users[row["id"]] = {
+                "name": row["name"],
+                "phone": row["phone"],
+                "patient_history": row.get("patient_history", "")
+            }
     return users
-
-def add_user(user_id, name, phone):
-    ensure_user_csv()
-    with open(USER_CSV, "a", newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([user_id, name, phone])
 
 def login_signup():
     st.title("Login / Signup")
@@ -41,12 +45,18 @@ def login_signup():
     action = st.radio("Action", ["Login", "Sign Up"])
     users = get_users()
 
+    if action == "Sign Up":
+        patient_history = st.text_area("Patient History (e.g. Diabetes, Accident, etc.)")  # Only for signup
+    else:
+        patient_history = ""  # Not shown/used for login
+
     if st.button("Continue"):
         if action == "Login":
             if user_id in users:
                 st.session_state["user_id"] = user_id
                 st.session_state["user_name"] = users[user_id]["name"]
                 st.session_state["user_phone"] = users[user_id]["phone"]
+                st.session_state["patient_history"] = users[user_id].get("patient_history", "")
                 st.success(f"Welcome back, {users[user_id]['name']}!")
                 st.rerun()
             else:
@@ -57,10 +67,11 @@ def login_signup():
             elif not user_id or not name or not phone:
                 st.error("Please fill all fields.")
             else:
-                add_user(user_id, name, phone)
+                add_user(user_id, name, phone, patient_history)
                 st.session_state["user_id"] = user_id
                 st.session_state["user_name"] = name
                 st.session_state["user_phone"] = phone
+                st.session_state["patient_history"] = patient_history
                 st.success("Signup successful! Welcome.")
                 st.rerun()
 
@@ -70,6 +81,80 @@ if "user_id" not in st.session_state:
 else:
     st.write(f"Logged in as: {st.session_state['user_id']}")
 
+def load_user_vitals_history(user_id):
+    """Load all vitals history files for the user."""
+    vitals_history = []
+    data_dir = "data"
+    for fname in os.listdir(data_dir):
+        if fname.startswith(f"vitals_{user_id}_") and fname.endswith(".csv"):
+            with open(os.path.join(data_dir, fname), newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    row['file'] = fname
+                    vitals_history.append(row)
+    return vitals_history
+
+def update_patient_history(user_id, new_history):
+    # Update patient_history for the user in users.csv
+    users = []
+    updated = False
+    fieldnames = ["id", "name", "phone", "patient_history"]
+    with open(USER_CSV, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Only keep the expected fields
+            filtered_row = {k: row.get(k, "") for k in fieldnames}
+            if filtered_row["id"] == user_id:
+                filtered_row["patient_history"]
+
+                
+def history_tab():
+    st.subheader("📜 History")
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        st.info("Please log in to view your history.")
+        return
+
+    # Get patient history from session or CSV
+    patient_history = st.session_state.get("patient_history", "")
+    if not patient_history:
+        users = get_users()
+        patient_history = users.get(user_id, {}).get("patient_history", "")
+
+    # Editable patient history in History tab
+    st.markdown("### Patient History")
+    new_history = st.text_area(
+        "Update your medical history (e.g. Diabetes, Accident, etc.):",
+        value=patient_history or "",
+        key="history_tab_patient_history"
+    )
+    if st.button("Update Patient History"):
+        update_patient_history(user_id, new_history)
+        st.session_state["patient_history"] = new_history
+        st.success("Patient history updated!")
+        st.rerun()
+    elif patient_history:
+        st.info(f"**Patient History:** {patient_history}")
+    else:
+        st.warning("No patient history found. Please enter it above.")
+
+    # Vitals History
+    st.markdown("### Vitals History")
+    vitals_history = load_user_vitals_history(user_id)
+    if vitals_history:
+        df_vitals = pd.DataFrame(vitals_history)
+        st.dataframe(df_vitals, use_container_width=True)
+    else:
+        st.info("No vitals history found.")
+
+    # Appointment History
+    st.markdown("### Appointment History")
+    appointments = st.session_state.appointment_system.get_user_appointments(user_id)
+    if appointments:
+        df_appt = pd.DataFrame(appointments)
+        st.dataframe(df_appt, use_container_width=True)
+    else:
+        st.info("No appointment history found.")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -887,7 +972,7 @@ def main():
         st.header("Navigation")
         page = st.radio(
             "Select Section:",
-            ["Vitals Collection", "Health Chat", "First Aid", "Book Appointment", "My Appointments", "Doctor Management", "Export Data"]
+            ["Vitals Collection", "Health Chat", "First Aid", "Book Appointment", "My Appointments", "Doctor Management", "Export Data","History"]
         )
         
         # Display current session info
@@ -916,6 +1001,9 @@ def main():
         
     elif page == "My Appointments":
         my_appointments_interface()
+    elif page == "History":
+        history_tab()
+
         
     elif page == "Export Data":
         st.subheader("📁 Export Health Data")
